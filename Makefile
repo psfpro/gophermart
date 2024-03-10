@@ -16,11 +16,14 @@ build-gophermart:
 	cd cmd/gophermart && go build -buildvcs=false -o gophermart
 
 gophermart-test:
-	metricstest -test.v -test.run=^TestIteration14$$ \
-                -source-path=. \
-                -agent-binary-path=cmd/agent/agent \
-                -binary-path=cmd/server/server \
-                -database-dsn='postgres://app:pass@localhost:5432/app?sslmode=disable' \
-                -key=123 \
-                -file-storage-path=tmp \
-                -server-port=8888
+	gophermarttest \
+            -test.v -test.run=^TestGophermart$$ \
+            -gophermart-binary-path=cmd/gophermart/gophermart \
+            -gophermart-host=localhost \
+            -gophermart-port=8080 \
+            -gophermart-database-uri="postgresql://app:pass@localhost:5432/app?sslmode=disable" \
+            -accrual-binary-path=cmd/accrual/accrual_linux_amd64 \
+            -accrual-host=localhost \
+            -accrual-port=8081 \
+            -accrual-database-uri="postgresql://app:pass@localhost:5432/app?sslmode=disable"
+
