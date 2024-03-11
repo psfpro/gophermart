@@ -21,6 +21,7 @@ type FunctionalSuite struct {
 	suite.Suite
 	container *gophermart.Container
 	ts        *httptest.Server
+	token     string
 }
 
 func (s *FunctionalSuite) SetupSuite() {
@@ -29,8 +30,9 @@ func (s *FunctionalSuite) SetupSuite() {
 	s.ts = httptest.NewServer(container.Router())
 }
 
-func (s *FunctionalSuite) DoRequest(method string, target string, body io.Reader) Response {
-	request := httptest.NewRequest(method, s.ts.URL+target, body)
+func (s *FunctionalSuite) DoRequest(method string, target string, body string) Response {
+	request := httptest.NewRequest(method, s.ts.URL+target, bytes.NewBufferString(body))
+	request.Header.Set("Authorization", s.token)
 	request.RequestURI = ""
 	res, err := s.ts.Client().Do(request)
 	s.NoError(err)
@@ -44,6 +46,17 @@ func (s *FunctionalSuite) DoRequest(method string, target string, body io.Reader
 		response:    string(resBody),
 		contentType: res.Header.Get("Content-Type"),
 	}
+}
+
+func (s *FunctionalSuite) Auth() {
+	request := httptest.NewRequest(http.MethodPost, s.ts.URL+"/api/user/register", bytes.NewBufferString(`{"login":"test","password":"test"}`))
+	request.Header.Set("Authorization", s.token)
+	request.RequestURI = ""
+	res, err := s.ts.Client().Do(request)
+	s.NoError(err)
+	err = res.Body.Close()
+	s.NoError(err)
+	s.token = res.Header.Get("Authorization")
 }
 
 func TestFunctionalSuite(t *testing.T) {
@@ -68,7 +81,7 @@ func (s *FunctionalSuite) TestNotFoundRequestHandler() {
 	}
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			res := s.DoRequest(http.MethodGet, tt.target, nil)
+			res := s.DoRequest(http.MethodGet, tt.target, "")
 			s.Equal(tt.want, res)
 		})
 	}
@@ -92,7 +105,7 @@ func (s *FunctionalSuite) TestPingRequestHandler() {
 	}
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			res := s.DoRequest(http.MethodGet, tt.target, nil)
+			res := s.DoRequest(http.MethodGet, tt.target, "")
 			s.Equal(tt.want, res)
 		})
 	}
@@ -131,7 +144,7 @@ func (s *FunctionalSuite) TestUserLoginRequestHandler() {
 	}
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			res := s.DoRequest(tt.method, tt.target, bytes.NewBufferString(tt.body))
+			res := s.DoRequest(tt.method, tt.target, tt.body)
 			s.Equal(tt.want, res)
 		})
 	}
@@ -170,7 +183,45 @@ func (s *FunctionalSuite) TestUserRegisterRequestHandler() {
 	}
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			res := s.DoRequest(tt.method, tt.target, bytes.NewBufferString(tt.body))
+			res := s.DoRequest(tt.method, tt.target, tt.body)
+			s.Equal(tt.want, res)
+		})
+	}
+}
+
+func (s *FunctionalSuite) TestBalanceRequestHandler() {
+	s.Auth()
+	tests := []struct {
+		name   string
+		method string
+		target string
+		body   string
+		want   Response
+	}{
+		{
+			name:   "method not allowed",
+			method: http.MethodPost,
+			target: "/api/user/balance",
+			want: Response{
+				code:        http.StatusMethodNotAllowed,
+				response:    "",
+				contentType: "",
+			},
+		},
+		{
+			name:   "success",
+			method: http.MethodGet,
+			target: "/api/user/balance",
+			want: Response{
+				code:        http.StatusOK,
+				response:    `{"current":0,"withdrawn":0}`,
+				contentType: "application/json",
+			},
+		},
+	}
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			res := s.DoRequest(tt.method, tt.target, tt.body)
 			s.Equal(tt.want, res)
 		})
 	}

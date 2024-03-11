@@ -10,5 +10,5 @@ type AuthenticationService interface {
 	CheckPassword(passwordHash domain.PasswordHash, providedPassword string) error
 	AccessToken(userID uuid.UUID) (string, error)
 	RefreshToken() (string, error)
-	GetUserID(tokenString string) uuid.UUID
+	GetUserID(tokenString string) (uuid.UUID, error)
 }

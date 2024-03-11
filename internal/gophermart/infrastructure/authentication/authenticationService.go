@@ -67,11 +67,14 @@ func (s *Service) RefreshToken() (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
-func (s *Service) GetUserID(tokenString string) uuid.UUID {
+func (s *Service) GetUserID(tokenString string) (uuid.UUID, error) {
 	claims := &Claims{}
-	jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
+	_, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
 		return []byte(SecretKey), nil
 	})
+	if err != nil {
+		return uuid.UUID{}, err
+	}
 
-	return claims.UserID
+	return claims.UserID, nil
 }

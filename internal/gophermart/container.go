@@ -47,22 +47,35 @@ func NewContainer() *Container {
 	// Repositories
 	userRepository := postgres.NewUserRepository(db)
 	userRepository.CreateTable(ctx)
+	transactionRepository := postgres.NewTransactionRepository(db)
+	transactionRepository.CreateTable(ctx)
 
 	// Services
 	authenticationService := authentication.NewService()
 	userService := application.NewUserService(userRepository, authenticationService)
+	transactionService := application.NewTransactionService(transactionRepository)
 
 	// HTTP handlers
 	pingRequestHandler := handler.NewPingRequestHandler(db)
 	notFoundHandler := handler.NewNotFoundRequestHandler()
 	userLoginHandler := handler.NewUserLoginRequestHandler(userService)
 	userRegisterHandler := handler.NewUserRegisterRequestHandler(userService)
+	balanceHandler := handler.NewBalanceRequestHandler(transactionService, authenticationService)
+	orderUploadHandler := handler.NewOrderUploadRequestHandler(transactionService, authenticationService)
+	ordersHandler := handler.NewOrdersRequestHandler(transactionService, authenticationService)
+	withdrawHandler := handler.NewWithdrawRequestHandler(transactionService, authenticationService)
+	withdrawalsHandler := handler.NewWithdrawalsRequestHandler(transactionService, authenticationService)
 
 	router := chi.NewRouter()
 	router.Use(middleware.RealIP, middleware.Logger, middleware.Recoverer)
 	router.Get(`/api/ping`, pingRequestHandler.HandleRequest)
 	router.Post(`/api/user/login`, userLoginHandler.HandleRequest)
 	router.Post(`/api/user/register`, userRegisterHandler.HandleRequest)
+	router.Get(`/api/user/balance`, balanceHandler.HandleRequest)
+	router.Post(`/api/user/orders`, orderUploadHandler.HandleRequest)
+	router.Get(`/api/user/orders`, ordersHandler.HandleRequest)
+	router.Post(`/api/user/balance/withdraw`, withdrawHandler.HandleRequest)
+	router.Get(`/api/user/withdrawals`, withdrawalsHandler.HandleRequest)
 	router.NotFound(notFoundHandler.HandleRequest)
 
 	srv := &http.Server{Addr: ":8080", Handler: router}
