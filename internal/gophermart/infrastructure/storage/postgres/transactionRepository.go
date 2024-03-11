@@ -99,6 +99,44 @@ WHERE user_id=$1 AND transaction_type=$2`, userID, domain.TransactionTypeAccrual
 	return res, nil
 }
 
+func (r *TransactionRepository) GetNewAccruals(ctx context.Context) ([]*domain.Transaction, error) {
+	var res []*domain.Transaction
+	rows, err := r.db.QueryContext(ctx, `
+SELECT id, user_id, order_number, status, transaction_type, amount, created_at, updated_at
+FROM "transaction"
+WHERE status=$1 AND transaction_type=$2`, domain.TransactionStatusNew, domain.TransactionTypeAccrual)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		data := TransactionData{}
+		err = rows.Scan(
+			&data.id,
+			&data.userID,
+			&data.orderNumber,
+			&data.status,
+			&data.transactionType,
+			&data.amount,
+			&data.createdAt,
+			&data.updatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		entity, err := data.entity()
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, entity)
+	}
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
 func (r *TransactionRepository) GetWithdrawalsByUserID(ctx context.Context, userID uuid.UUID) ([]*domain.Transaction, error) {
 	var res []*domain.Transaction
 	rows, err := r.db.QueryContext(ctx, `

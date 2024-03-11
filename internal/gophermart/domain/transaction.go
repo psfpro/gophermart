@@ -84,6 +84,11 @@ func (t *Transaction) UpdatedAt() time.Time {
 	return t.updatedAt
 }
 
+func (t *Transaction) Processed(status TransactionStatus, amount TransactionAmount) {
+	t.status = status
+	t.amount = amount
+}
+
 func NewTransaction(
 	id TransactionID,
 	userID UserID,

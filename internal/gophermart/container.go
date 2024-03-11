@@ -3,9 +3,6 @@ package gophermart
 import (
 	"context"
 	"database/sql"
-	"github.com/psfpro/gophermart/internal/gophermart/application"
-	"github.com/psfpro/gophermart/internal/gophermart/infrastructure/authentication"
-	"github.com/psfpro/gophermart/internal/gophermart/infrastructure/storage/postgres"
 	"log"
 	"net/http"
 
@@ -13,7 +10,11 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	_ "github.com/jackc/pgx/v5/stdlib"
 
+	"github.com/psfpro/gophermart/internal/gophermart/application"
+	"github.com/psfpro/gophermart/internal/gophermart/infrastructure/accrual"
 	"github.com/psfpro/gophermart/internal/gophermart/infrastructure/api/http/handler"
+	"github.com/psfpro/gophermart/internal/gophermart/infrastructure/authentication"
+	"github.com/psfpro/gophermart/internal/gophermart/infrastructure/storage/postgres"
 )
 
 type Container struct {
@@ -79,7 +80,8 @@ func NewContainer() *Container {
 	router.NotFound(notFoundHandler.HandleRequest)
 
 	srv := &http.Server{Addr: ":8080", Handler: router}
-	app := NewApp(srv)
+	accrualClient := accrual.NewClient(config.accrualAddress, transactionRepository)
+	app := NewApp(srv, accrualClient)
 
 	return &Container{
 		router: router,

@@ -3,6 +3,7 @@ package gophermart
 import (
 	"context"
 	"errors"
+	"github.com/psfpro/gophermart/internal/gophermart/infrastructure/accrual"
 	"log"
 	"net/http"
 	"os"
@@ -12,15 +13,17 @@ import (
 )
 
 type App struct {
-	httpServer *http.Server
+	httpServer    *http.Server
+	accrualClient *accrual.Client
 }
 
-func NewApp(httpServer *http.Server) *App {
-	return &App{httpServer: httpServer}
+func NewApp(httpServer *http.Server, accrualClient *accrual.Client) *App {
+	return &App{httpServer: httpServer, accrualClient: accrualClient}
 }
 
 func (a *App) Run() {
 	a.runHTTPServer()
+	a.runAccrualWorker()
 	a.waitSignal()
 }
 
@@ -30,6 +33,10 @@ func (a *App) runHTTPServer() {
 			log.Printf("server error: %v", err)
 		}
 	}()
+}
+
+func (a *App) runAccrualWorker() {
+	go a.accrualClient.Worker()
 }
 
 func (a *App) waitSignal() {
