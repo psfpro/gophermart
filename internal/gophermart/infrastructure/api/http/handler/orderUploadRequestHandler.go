@@ -2,10 +2,12 @@ package handler
 
 import (
 	"errors"
+	"github.com/gofrs/uuid"
 	"io"
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/psfpro/gophermart/internal/gophermart/application"
 	"github.com/psfpro/gophermart/internal/gophermart/domain"
@@ -44,8 +46,19 @@ func (h *OrderUploadRequestHandler) HandleRequest(response http.ResponseWriter, 
 		response.WriteHeader(http.StatusUnprocessableEntity)
 		return
 	}
+	UUID, err := uuid.NewV6()
+	if err != nil {
+		http.Error(response, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-	err = h.transactionService.NewAccrual(request.Context(), domain.NewUserID(userID), domain.OrderNumber(orderNumber))
+	err = h.transactionService.NewAccrual(
+		request.Context(),
+		domain.NewTransactionID(UUID),
+		domain.NewUserID(userID),
+		domain.OrderNumber(orderNumber),
+		time.Now(),
+	)
 
 	if err != nil {
 		log.Println(err)

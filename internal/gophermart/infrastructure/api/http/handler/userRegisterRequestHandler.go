@@ -2,7 +2,9 @@ package handler
 
 import (
 	"encoding/json"
+	"github.com/gofrs/uuid"
 	"github.com/psfpro/gophermart/internal/gophermart/application"
+	"github.com/psfpro/gophermart/internal/gophermart/domain"
 	"log"
 	"net/http"
 )
@@ -27,8 +29,13 @@ func (h *UserRegisterRequestHandler) HandleRequest(response http.ResponseWriter,
 		http.Error(response, err.Error(), http.StatusBadRequest)
 		return
 	}
+	UUID, err := uuid.NewV6()
+	if err != nil {
+		http.Error(response, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-	res, err := h.userService.Registration(request.Context(), v.Login, v.Password)
+	res, err := h.userService.Registration(request.Context(), domain.NewUserID(UUID), v.Login, v.Password)
 
 	if err != nil {
 		log.Println(err)

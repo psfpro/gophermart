@@ -3,8 +3,10 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"github.com/gofrs/uuid"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/psfpro/gophermart/internal/gophermart/application"
 	"github.com/psfpro/gophermart/internal/gophermart/domain"
@@ -44,12 +46,19 @@ func (h *WithdrawRequestHandler) HandleRequest(response http.ResponseWriter, req
 		http.Error(response, err.Error(), http.StatusBadRequest)
 		return
 	}
+	UUID, err := uuid.NewV6()
+	if err != nil {
+		http.Error(response, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	err = h.transactionService.NewWithdrawal(
 		request.Context(),
+		domain.NewTransactionID(UUID),
 		domain.NewUserID(userID),
 		domain.OrderNumber(v.Order),
 		domain.NewTransactionAmount(v.Sum),
+		time.Now(),
 	)
 
 	if err != nil {

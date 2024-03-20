@@ -16,18 +16,16 @@ func NewTransactionService(transactionRepository domain.TransactionRepository) *
 	return &TransactionService{transactionRepository: transactionRepository}
 }
 
-var ErrTransactionUploadedByUser = errors.New("transaction uploaded by user")
-var ErrTransactionUploadedByOtherUser = errors.New("transaction uploaded by other user")
+var ErrTransactionUploadedByUser = errors.New("oldWithdrawal uploaded by user")
+var ErrTransactionUploadedByOtherUser = errors.New("oldWithdrawal uploaded by other user")
 
 func (s *TransactionService) NewAccrual(
 	ctx context.Context,
+	transactionID domain.TransactionID,
 	userID domain.UserID,
 	orderNumber domain.OrderNumber,
+	now time.Time,
 ) error {
-	UUID, err := uuid.NewV6()
-	if err != nil {
-		return err
-	}
 	transaction, err := s.transactionRepository.GetByOrderNumber(ctx, orderNumber)
 	if err != nil && !errors.Is(err, domain.ErrTransactionNotFound) {
 		return err
@@ -39,14 +37,14 @@ func (s *TransactionService) NewAccrual(
 	}
 
 	transaction = domain.NewTransaction(
-		domain.NewTransactionID(UUID),
+		transactionID,
 		userID,
 		orderNumber,
 		domain.TransactionStatusNew,
 		domain.TransactionTypeAccrual,
 		domain.TransactionAmount(0),
-		time.Now(),
-		time.Now(),
+		now,
+		now,
 	)
 	if err := s.transactionRepository.Save(ctx, transaction); err != nil {
 		return err
@@ -61,23 +59,31 @@ func (s *TransactionService) GetAccruals(ctx context.Context, userID uuid.UUID) 
 
 func (s *TransactionService) NewWithdrawal(
 	ctx context.Context,
+	transactionID domain.TransactionID,
 	userID domain.UserID,
 	orderNumber domain.OrderNumber,
 	amount domain.TransactionAmount,
+	now time.Time,
 ) error {
-	UUID, err := uuid.NewV6()
-	if err != nil {
+	transaction, err := s.transactionRepository.GetByOrderNumber(ctx, orderNumber)
+	if err != nil && !errors.Is(err, domain.ErrTransactionNotFound) {
 		return err
 	}
-	transaction := domain.NewTransaction(
-		domain.NewTransactionID(UUID),
+	if transaction != nil && transaction.UserID() == userID {
+		return ErrTransactionUploadedByUser
+	} else if transaction != nil && transaction.UserID() != userID {
+		return ErrTransactionUploadedByOtherUser
+	}
+
+	transaction = domain.NewTransaction(
+		transactionID,
 		userID,
 		orderNumber,
 		domain.TransactionStatusProcessed,
 		domain.TransactionTypeWithdrawal,
 		amount,
-		time.Now(),
-		time.Now(),
+		now,
+		now,
 	)
 	if err := s.transactionRepository.Save(ctx, transaction); err != nil {
 		return err

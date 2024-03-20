@@ -5,6 +5,7 @@ import (
 	"github.com/psfpro/gophermart/internal/gophermart/domain"
 )
 
+//go:generate mockery --name AuthenticationService --with-expecter
 type AuthenticationService interface {
 	HashPassword(password string) (domain.PasswordHash, error)
 	CheckPassword(passwordHash domain.PasswordHash, providedPassword string) error

@@ -3,11 +3,11 @@ package application
 import (
 	"context"
 	"errors"
-	"github.com/gofrs/uuid"
 	"github.com/psfpro/gophermart/internal/gophermart/domain"
 )
 
 var ErrUserUnauthorized = errors.New("user unauthorized")
+var ErrUserLoginAlreadyTaken = errors.New("user login already taken")
 
 type UserService struct {
 	userRepository domain.UserRepository
@@ -18,19 +18,21 @@ func NewUserService(userRepository domain.UserRepository, hashService Authentica
 	return &UserService{userRepository: userRepository, hashService: hashService}
 }
 
-func (s *UserService) Registration(ctx context.Context, login string, password string) (*LoginResult, error) {
-	UUID, err := uuid.NewV6()
-	if err != nil {
+func (s *UserService) Registration(ctx context.Context, userID domain.UserID, login string, password string) (*LoginResult, error) {
+	user, err := s.userRepository.GetByLogin(ctx, login)
+	if err != nil && !errors.Is(err, domain.ErrUserNotFound) {
 		return nil, err
 	}
-	userID := domain.NewUserID(UUID)
+	if user != nil {
+		return nil, ErrUserLoginAlreadyTaken
+	}
 	userLogin := domain.Login(login)
 	passwordHash, err := s.hashService.HashPassword(password)
 	if err != nil {
 		return nil, err
 	}
 
-	user := domain.NewUser(
+	user = domain.NewUser(
 		userID,
 		userLogin,
 		passwordHash,
